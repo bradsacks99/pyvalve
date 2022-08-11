@@ -7,7 +7,6 @@ from io import BytesIO, BufferedReader
 from typing import List, BinaryIO
 from asyncinit import asyncinit
 from aiopath import AsyncPath
-from aiofile import async_open, AIOFile, LineReader
 
 DEBUG = 1
 
@@ -55,6 +54,13 @@ class Pyvalve():
         self.conn: Connection = None
         self.stream_buffer = 1024
         self.persistant_connection = False
+
+    def set_connection(self,  conn: Connection) -> None:
+        """
+        Set connection
+        :param conn Connection: A connection object
+        """
+        self.conn = conn
 
     def set_stream_buffer(self,  length: int) -> None:
         """
@@ -165,18 +171,26 @@ class Pyvalve():
         :rtype: str
         """
         await self.get_connection()
+
         jargs = ''
         if args:
             jargs = ' ' + ' '.join(args)
+
         message = f'n{msg}{jargs}\n'
         print_(f'Send: {message}')
+
         self.conn.writer.write(message.encode('utf-8'))
+
         await self.conn.writer.drain()
         data = await self.conn.reader.read()
         data_dec: str = data.decode().strip()
+
+        if "ERROR" in data_dec:
+            raise PyvalveResponseError(data_dec)
         print_(f'Received: {data_dec}')
 
         await self.close()
+
         return data_dec
 
     async def instream(self, buffer: BinaryIO) -> str:
@@ -228,11 +242,13 @@ class Pyvalve():
             Check scanning path
 
             :param path str: Path to file/directory to be scanned
-            :raises PyvalveScanningError: If path is not found
+            :raises PyvalveConnectionError: If path is not found
         """
+        print_(f'Checking path {path}')
         chk_path = AsyncPath(path)
+
         if not await chk_path.exists():
-            raise PyvalveScanningError(f'Path not found: {path}')
+            raise PyvalveConnectionError(f'Path not found: {path}')
 
     async def get_connection(self):
         """ Place holder get_connection method """
@@ -263,7 +279,7 @@ class PyvalveSocket(Pyvalve):
                 path = self.socket,
                 ssl_handshake_timeout = self.timeout
             )
-            self.conn = Connection(reader, writer)
+            self.set_connection(Connection(reader, writer))
         except FileNotFoundError as exc:
             raise PyvalveConnectionError(f"socket file not found: {self.socket}") from exc
         except Exception as exc:
@@ -297,6 +313,6 @@ class PyvalveNetwork(Pyvalve):
                 port = self.port,
                 ssl_handshake_timeout = self.timeout
             )
-            self.conn = Connection(reader, writer)
+            self.set_connection(Connection(reader, writer))
         except Exception as exc:
             raise PyvalveConnectionError(str(exc)) from exc
