@@ -212,20 +212,33 @@ class Pyvalve():
                     break
                 yield chunk
 
-        with buffer as buffer_pointer:
-            for chunk in read_chunks(buffer_pointer, self.stream_buffer):
-                size = struct.pack(b'!L', len(chunk))
-                self.conn.writer.write(size + chunk)
+        try:
+            with buffer as buffer_pointer:
+                for chunk in read_chunks(buffer_pointer, self.stream_buffer):
+                    size = struct.pack(b'!L', len(chunk))
+                    self.conn.writer.write(size + chunk)
 
-        self.conn.writer.write(struct.pack(b'!L', 0))
-        await self.conn.writer.drain()
+            print_("Printed chunks. Closing out request.")
+            self.conn.writer.write(struct.pack(b'!L', 0))
 
-        data = await self.conn.reader.read()
+            print_("Done writing stream. Check results")
 
-        data_dec: str = data.decode().strip()
-        print_(f'Received: {data_dec}')
-        print_('Close the connection')
-        await self.close()
+            data = await self.conn.reader.read()
+            data_dec: str = data.decode().strip()
+            if "INSTREAM size limit exceeded" in data_dec:
+                raise PyvalveStreamMaxLength(data_dec)
+
+            await self.conn.writer.drain()
+
+            print_(f'Received: {data_dec}')
+            print_('Close the connection')
+
+            await self.close()
+
+        except BrokenPipeError as exp:
+            print_(str(exp))
+            raise PyvalveConnectionError(exp) from exp
+
         return data_dec
 
     async def close(self) -> None:
