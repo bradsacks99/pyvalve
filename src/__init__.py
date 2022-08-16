@@ -7,7 +7,6 @@ from io import BytesIO, BufferedReader
 from typing import List, BinaryIO
 from asyncinit import asyncinit
 from aiopath import AsyncPath
-from aiofile import async_open, AIOFile, LineReader
 
 DEBUG = 1
 
@@ -55,6 +54,13 @@ class Pyvalve():
         self.conn: Connection = None
         self.stream_buffer = 1024
         self.persistant_connection = False
+
+    def set_connection(self,  conn: Connection) -> None:
+        """
+        Set connection
+        :param conn Connection: A connection object
+        """
+        self.conn = conn
 
     def set_stream_buffer(self,  length: int) -> None:
         """
@@ -165,18 +171,26 @@ class Pyvalve():
         :rtype: str
         """
         await self.get_connection()
+
         jargs = ''
         if args:
             jargs = ' ' + ' '.join(args)
+
         message = f'n{msg}{jargs}\n'
         print_(f'Send: {message}')
+
         self.conn.writer.write(message.encode('utf-8'))
+
         await self.conn.writer.drain()
         data = await self.conn.reader.read()
         data_dec: str = data.decode().strip()
+
+        if "ERROR" in data_dec:
+            raise PyvalveResponseError(data_dec)
         print_(f'Received: {data_dec}')
 
         await self.close()
+
         return data_dec
 
     async def instream(self, buffer: BinaryIO) -> str:
@@ -198,20 +212,33 @@ class Pyvalve():
                     break
                 yield chunk
 
-        with buffer as buffer_pointer:
-            for chunk in read_chunks(buffer_pointer, self.stream_buffer):
-                size = struct.pack(b'!L', len(chunk))
-                self.conn.writer.write(size + chunk)
+        try:
+            with buffer as buffer_pointer:
+                for chunk in read_chunks(buffer_pointer, self.stream_buffer):
+                    size = struct.pack(b'!L', len(chunk))
+                    self.conn.writer.write(size + chunk)
 
-        self.conn.writer.write(struct.pack(b'!L', 0))
-        await self.conn.writer.drain()
+            print_("Printed chunks. Closing out request.")
+            self.conn.writer.write(struct.pack(b'!L', 0))
 
-        data = await self.conn.reader.read()
+            print_("Done writing stream. Check results")
 
-        data_dec: str = data.decode().strip()
-        print_(f'Received: {data_dec}')
-        print_('Close the connection')
-        await self.close()
+            data = await self.conn.reader.read()
+            data_dec: str = data.decode().strip()
+            if "INSTREAM size limit exceeded" in data_dec:
+                raise PyvalveStreamMaxLength(data_dec)
+
+            await self.conn.writer.drain()
+
+            print_(f'Received: {data_dec}')
+            print_('Close the connection')
+
+            await self.close()
+
+        except BrokenPipeError as exp:
+            print_(str(exp))
+            raise PyvalveConnectionError(exp) from exp
+
         return data_dec
 
     async def close(self) -> None:
@@ -228,11 +255,13 @@ class Pyvalve():
             Check scanning path
 
             :param path str: Path to file/directory to be scanned
-            :raises PyvalveScanningError: If path is not found
+            :raises PyvalveConnectionError: If path is not found
         """
+        print_(f'Checking path {path}')
         chk_path = AsyncPath(path)
+
         if not await chk_path.exists():
-            raise PyvalveScanningError(f'Path not found: {path}')
+            raise PyvalveConnectionError(f'Path not found: {path}')
 
     async def get_connection(self):
         """ Place holder get_connection method """
@@ -263,7 +292,7 @@ class PyvalveSocket(Pyvalve):
                 path = self.socket,
                 ssl_handshake_timeout = self.timeout
             )
-            self.conn = Connection(reader, writer)
+            self.set_connection(Connection(reader, writer))
         except FileNotFoundError as exc:
             raise PyvalveConnectionError(f"socket file not found: {self.socket}") from exc
         except Exception as exc:
@@ -297,6 +326,6 @@ class PyvalveNetwork(Pyvalve):
                 port = self.port,
                 ssl_handshake_timeout = self.timeout
             )
-            self.conn = Connection(reader, writer)
+            self.set_connection(Connection(reader, writer))
         except Exception as exc:
             raise PyvalveConnectionError(str(exc)) from exc
