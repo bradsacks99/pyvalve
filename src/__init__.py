@@ -58,13 +58,15 @@ class Pyvalve():
     def set_connection(self,  conn: Connection) -> None:
         """
         Set connection
+
         :param conn Connection: A connection object
         """
         self.conn = conn
 
     def set_stream_buffer(self,  length: int) -> None:
         """
-        Set stream bugger
+        Set stream buffer
+
         :param length int: Desired stream buffer in bytes
         """
         self.stream_buffer = length
@@ -72,6 +74,7 @@ class Pyvalve():
     def set_persistant_connection(self,  persist: bool) -> None:
         """
         Set persistent connection
+
         :param persist bool: persistent connection True/False
         """
         self.persistant_connection = persist
@@ -79,6 +82,7 @@ class Pyvalve():
     async def ping(self) -> str:
         """
         Send ping command
+
         :return: Response from clamav
         :rtype: str
         """
@@ -87,6 +91,7 @@ class Pyvalve():
     async def stats(self) -> str:
         """
         Send stats command
+
         :return: Response from clamav
         :rtype: str
         """
@@ -95,6 +100,7 @@ class Pyvalve():
     async def version(self) -> str:
         """
         Send version command
+
         :return: Response from clamav
         :rtype: str
         """
@@ -103,6 +109,7 @@ class Pyvalve():
     async def reload(self) -> str:
         """
         Send reload command
+
         :return: Response from clamav
         :rtype: str
         """
@@ -111,6 +118,7 @@ class Pyvalve():
     async def shutdown(self) -> str:
         """
         Send shutdown command
+
         :return: Response from clamav
         :rtype: str
         """
@@ -119,45 +127,53 @@ class Pyvalve():
     async def scan(self, path: str) -> str:
         """
         Send scan command
+
         :param path str: Path to file/directory to be scanned
         :return: Response from clamav
         :rtype: str
         :raises PyvalveScanningError: If path is not found
         """
-        await self.check_path(path)
+        if not await self.check_path(path):
+            raise PyvalveScanningError(f'Path not found: {path}')
         return await self.send_command('SCAN', path)
 
     async def contscan(self, path: str) -> str:
         """
         Send constscan command
+
         :param path str: Path to file/directory to be scanned
         :return: Response from clamav
         :rtype: str
         :raises PyvalveScanningError: If path is not found
         """
-        await self.check_path(path)
+        if not await self.check_path(path):
+            raise PyvalveScanningError(f'Path not found: {path}')
         return await self.send_command('CONTSCAN', path)
 
     async def multiscan(self, path: str) -> str:
         """
         Send multiscan command
+
         :param path str: Path to file/directory to be scanned
         :return: Response from clamav
         :rtype: str
         :raises PyvalveScanningError: If path is not found
         """
-        await self.check_path(path)
+        if not await self.check_path(path):
+            raise PyvalveScanningError(f'Path not found: {path}')
         return await self.send_command('MULTISCAN', path)
 
     async def allmatchscan(self, path: str) -> str:
         """
         Send allmatchscan command
+
         :param path str: Path to file/directory to be scanned
         :return: Response from clamav
         :rtype: str
         :raises PyvalveScanningError: If path is not found
         """
-        await self.check_path(path)
+        if not await self.check_path(path):
+            raise PyvalveScanningError(f'Path not found: {path}')
         return await self.send_command('ALLMATCHSCAN', path)
 
     async def send_command(self,
@@ -165,10 +181,12 @@ class Pyvalve():
         *args: str) -> str:
         """
         Send a command to clamav
+
         :param str msg: The command
         :param list args: Command arguments
         :return: Response from clamav
         :rtype: str
+        :raises PyvalveResponseError: If clamav responds with an error
         """
         await self.get_connection()
 
@@ -196,9 +214,12 @@ class Pyvalve():
     async def instream(self, buffer: BinaryIO) -> str:
         """
         Send a stream to clamav
+
         :param BinaryIO buffer: a buffer object
         :return: Response from clamav
         :rtype: str
+        :raises PyvalveConnectionError: If connection is broken
+        :raises PyvalveStreamMaxLength: If stream size limit exceeded
         """
         await self.get_connection()
 
@@ -224,6 +245,7 @@ class Pyvalve():
             print_("Done writing stream. Check results")
 
             data = await self.conn.reader.read()
+
             data_dec: str = data.decode().strip()
             if "INSTREAM size limit exceeded" in data_dec:
                 raise PyvalveStreamMaxLength(data_dec)
@@ -232,11 +254,9 @@ class Pyvalve():
 
             print_(f'Received: {data_dec}')
             print_('Close the connection')
-
             await self.close()
 
         except BrokenPipeError as exp:
-            print_(str(exp))
             raise PyvalveConnectionError(exp) from exp
 
         return data_dec
@@ -250,18 +270,16 @@ class Pyvalve():
         self.conn.writer.close()
         await self.conn.writer.wait_closed()
 
-    async def check_path(self, path: str) -> None:
+    async def check_path(self, path: str) -> bool:
         """
-            Check scanning path
+        Check scanning path
 
-            :param path str: Path to file/directory to be scanned
-            :raises PyvalveConnectionError: If path is not found
+        :param path str: Path to file/directory to be scanned
         """
         print_(f'Checking path {path}')
         chk_path = AsyncPath(path)
 
-        if not await chk_path.exists():
-            raise PyvalveConnectionError(f'Path not found: {path}')
+        return await chk_path.exists()
 
     async def get_connection(self):
         """ Place holder get_connection method """
@@ -274,7 +292,12 @@ class PyvalveSocket(Pyvalve):
     async def __init__(self, # type: ignore[misc]
         socket: str = "/tmp/clamd.socket",
         timeout: int = None):
-        """ Constructor """
+        """
+            PyvalveSocket Constructor
+
+            :param socket str: Path to socket file
+            :param timeout int: socket timemout
+        """
         await super().__init__()
         self.socket = socket
         self.timeout = timeout
@@ -282,6 +305,7 @@ class PyvalveSocket(Pyvalve):
     async def get_connection(self) -> None:
         """
             Get a socket connection
+
             :raises PyvalveConnectionError: If Pyvalve cannot connect to clamav
         """
         if self.conn and self.persistant_connection:
@@ -306,7 +330,13 @@ class PyvalveNetwork(Pyvalve):
         host: str = "localhost",
         port: int = 3310,
         timeout: int = None):
-        """ Constructor """
+        """
+        PyvalveNetwork Constructor
+
+        :param host str: host address for clamav
+        :param port int: listening port for clamav
+        :param timeout int: socket timemout
+        """
         await super().__init__()
         self.host = host
         self.port = port
@@ -315,6 +345,7 @@ class PyvalveNetwork(Pyvalve):
     async def get_connection(self) -> None:
         """
         Get a network connection
+
         :raises PyvalveConnectionError: If Pyvalve cannot connect to clamav
         """
         if self.conn and self.persistant_connection:

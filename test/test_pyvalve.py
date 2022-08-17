@@ -18,7 +18,7 @@ def event_loop():
 
 @pytest.mark.asyncio
 async def test_send_command():
-     #test a basic command
+    # test a basic command
     reader = asyncio.StreamReader()
     writer = mock.Mock(asyncio.StreamWriter)
     conn = Connection(reader, writer)
@@ -72,9 +72,9 @@ async def test_send_command():
 
 async def test_check_path():
 
-    with pytest.raises(PyvalveConnectionError):
-        pvs = await Pyvalve()
-        await pvs.check_path('abc/123')
+    pvs = await Pyvalve()
+    result = await pvs.check_path('abc/123')
+    assert result is False
 
     with mock.patch('src.AsyncPath.exists') as mock_exists:
 

@@ -162,3 +162,4 @@ cython_debug/
 # Test data
 test/data_bin
 
+.Sphinx-docs/
