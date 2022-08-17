@@ -2,6 +2,37 @@
 Asyncio python clamav client library
 
 
+## Usage Examples
+
+Ping
+```
+pvs = await PyvalveNetwork()
+response = await pvs.ping()
+```
+ClamAv will respond with "PONG"
+
+Scanning
+
+```
+pvs = await PyvalveNetwork()
+response = await pvs.scan(path)
+```
+
+Stream Scanning
+```
+from io import BytesIO
+from aiofile import AIOFile
+
+buffer = BytesIO()
+async with AIOFile('some/file', 'r') as file_pointer:
+    line = await file_pointer.read_bytes()
+    buffer.write(line)
+    buffer.seek(0)
+response = await pvs.instream(buffer)
+```
+
+## Documentation
+
 ### _class_ Pyvalve()
 Bases: `object`
 
