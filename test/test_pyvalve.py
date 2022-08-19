@@ -5,7 +5,7 @@ from io import BytesIO
 
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
-from src import Connection, Pyvalve, PyvalveSocket,  PyvalveNetwork, PyvalveResponseError, PyvalveConnectionError, PyvalveScanningError
+from src.pyvalve import Connection, Pyvalve, PyvalveSocket,  PyvalveNetwork, PyvalveResponseError, PyvalveConnectionError, PyvalveScanningError
 from unittest import mock
 
 
@@ -76,7 +76,7 @@ async def test_check_path():
     result = await pvs.check_path('abc/123')
     assert result is False
 
-    with mock.patch('src.AsyncPath.exists') as mock_exists:
+    with mock.patch('src.pyvalve.AsyncPath.exists') as mock_exists:
 
         future = asyncio.Future()
         future.set_result(True)
@@ -123,14 +123,14 @@ async def test_socket_get_connection():
         await pvs.get_connection()
 
     # test we raise the right errors
-    with mock.patch('src.asyncio.open_unix_connection', side_effect=FileNotFoundError('mocked error')):
+    with mock.patch('src.pyvalve.asyncio.open_unix_connection', side_effect=FileNotFoundError('mocked error')):
         with pytest.raises(PyvalveConnectionError) as exc:
             pvs = await PyvalveSocket()
             await pvs.get_connection()
             assert exc.value.message == 'mocked error'
 
     # test we raise the right errors
-    with mock.patch('src.asyncio.open_unix_connection', side_effect=Exception('mocked error')):
+    with mock.patch('src.pyvalve.asyncio.open_unix_connection', side_effect=Exception('mocked error')):
         with pytest.raises(PyvalveConnectionError) as exc:
             pvs = await PyvalveSocket()
             await pvs.get_connection()
@@ -152,14 +152,14 @@ async def test_network_get_connection():
         await pvs.get_connection()
 
     # test we raise the right errors
-    with mock.patch('src.asyncio.open_unix_connection', side_effect=FileNotFoundError('mocked error')):
+    with mock.patch('src.pyvalve.asyncio.open_unix_connection', side_effect=FileNotFoundError('mocked error')):
         with pytest.raises(PyvalveConnectionError) as exc:
             pvs = await PyvalveNetwork()
             await pvs.get_connection()
             assert exc.value.message == 'mocked error'
 
     # test we raise the right errors
-    with mock.patch('src.asyncio.open_unix_connection', side_effect=Exception('mocked error')):
+    with mock.patch('src.pyvalve.asyncio.open_unix_connection', side_effect=Exception('mocked error')):
         with pytest.raises(PyvalveConnectionError) as exc:
             pvs = await PyvalveNetwork()
             await pvs.get_connection()
@@ -283,7 +283,7 @@ async def test_shutdown():
 async def test_scan():
     # test scan command
 
-    with mock.patch('src.AsyncPath.exists') as mock_exists:
+    with mock.patch('src.pyvalve.AsyncPath.exists') as mock_exists:
         reader = asyncio.StreamReader()
         writer = mock.Mock(asyncio.StreamWriter)
         conn = Connection(reader, writer)
@@ -322,7 +322,7 @@ async def test_scan():
 async def test_contscan():
     # test test_contscan command
 
-    with mock.patch('src.AsyncPath.exists') as mock_exists:
+    with mock.patch('src.pyvalve.AsyncPath.exists') as mock_exists:
         reader = asyncio.StreamReader()
         writer = mock.Mock(asyncio.StreamWriter)
         conn = Connection(reader, writer)
@@ -361,7 +361,7 @@ async def test_contscan():
 async def test_multiscan():
     # test test_multiscan command
 
-    with mock.patch('src.AsyncPath.exists') as mock_exists:
+    with mock.patch('src.pyvalve.AsyncPath.exists') as mock_exists:
         reader = asyncio.StreamReader()
         writer = mock.Mock(asyncio.StreamWriter)
         conn = Connection(reader, writer)
@@ -400,7 +400,7 @@ async def test_multiscan():
 async def test_allmatchscan():
     # test test_allmatchscan command
 
-    with mock.patch('src.AsyncPath.exists') as mock_exists:
+    with mock.patch('src.pyvalve.AsyncPath.exists') as mock_exists:
         reader = asyncio.StreamReader()
         writer = mock.Mock(asyncio.StreamWriter)
         conn = Connection(reader, writer)

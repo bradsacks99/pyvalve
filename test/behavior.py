@@ -8,7 +8,7 @@ from io import BytesIO
 from aiofile import async_open, AIOFile, LineReader
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
-from src import PyvalveNetwork, PyvalveSocket
+from src.pyvalve import PyvalveNetwork, PyvalveSocket
 
 data_bin = os.path.dirname(os.path.abspath(__file__)) + '/data_bin'
 

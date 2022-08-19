@@ -8,7 +8,8 @@ from typing import List, BinaryIO
 from asyncinit import asyncinit
 from aiopath import AsyncPath
 
-DEBUG = 1
+__version__ = "0.1.0"
+DEBUG = 0
 
 def print_(msg: str) -> None:
     """
