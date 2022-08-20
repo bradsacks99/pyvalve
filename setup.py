@@ -9,12 +9,14 @@ history = open('CHANGES.rst').read().replace('.. :changelog:', '')
 
 setup(
     name="pyvalve",
-    version='0.0.1',
+    version='0.1.2',
     author="bsacks99",
     keywords = "python, asyncio, clamav, antivirus, scanner, virus, libclamav, clamd",
     description = "Asyncio python clamd client",
     long_description=readme + '\n\n' + history,
-    url="https://github.com/",
+    url="https://github.com/bradsacks99/pyvalve",
+    readme="README.md",
+    license="LICENSE"
     package_dir={'': 'src'},
     packages=find_packages('src', exclude="tests"),
     classifiers = [

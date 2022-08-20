@@ -1,9 +1,12 @@
 [tool.poetry]
 name = "Pyvalve"
-version = "0.1.0"
+version = "0.1.2"
 description = "Asyncio python clamav client"
 authors = ["Bradley Sacks <bradsacks99@gmail.com>"]
 license = "GPL-3.0-only"
+readme = "README.md"
+homepage = "https://github.com/bradsacks99/pyvalve"
+documentation = "https://github.com/bradsacks99/pyvalve/blob/master/README.md"
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -29,3 +32,7 @@ build-backend = "poetry.core.masonry.api"
 
 [package]
 include = ["src/*.py"]
+
+[scriv]
+version = "literal: src/pyvalve/__init__.py: __version__"
+format ="md"
