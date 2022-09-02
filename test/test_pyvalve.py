@@ -152,14 +152,7 @@ async def test_network_get_connection():
         await pvs.get_connection()
 
     # test we raise the right errors
-    with mock.patch('src.pyvalve.asyncio.open_unix_connection', side_effect=FileNotFoundError('mocked error')):
-        with pytest.raises(PyvalveConnectionError) as exc:
-            pvs = await PyvalveNetwork()
-            await pvs.get_connection()
-            assert exc.value.message == 'mocked error'
-
-    # test we raise the right errors
-    with mock.patch('src.pyvalve.asyncio.open_unix_connection', side_effect=Exception('mocked error')):
+    with mock.patch('src.pyvalve.asyncio.open_connection', side_effect=Exception('mocked error')):
         with pytest.raises(PyvalveConnectionError) as exc:
             pvs = await PyvalveNetwork()
             await pvs.get_connection()

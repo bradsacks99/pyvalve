@@ -6,9 +6,9 @@ import codecs
 from io import BytesIO, BufferedReader
 from typing import List, BinaryIO
 from asyncinit import asyncinit
-from aiopath import AsyncPath
+from aiopathlib import AsyncPath
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 DEBUG = 0
 
 def print_(msg: str) -> None:
