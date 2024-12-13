@@ -6,7 +6,7 @@ import codecs
 from io import BytesIO, BufferedReader
 from typing import List, BinaryIO
 from asyncinit import asyncinit
-from aiopathlib import AsyncPath
+from aiopath import AsyncPath
 
 __version__ = "0.1.3"
 DEBUG = 0
@@ -292,7 +292,7 @@ class PyvalveSocket(Pyvalve):
     """
     async def __init__(self, # type: ignore[misc]
         socket: str = "/tmp/clamd.socket",
-        timeout: int = None):
+        timeout: int = 60):
         """
             PyvalveSocket Constructor
 
@@ -330,7 +330,7 @@ class PyvalveNetwork(Pyvalve):
     async def __init__(self, # type: ignore[misc]
         host: str = "localhost",
         port: int = 3310,
-        timeout: int = None):
+        timeout: int = 60):
         """
         PyvalveNetwork Constructor
 
