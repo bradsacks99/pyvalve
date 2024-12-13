@@ -4,18 +4,18 @@
 ..
 Removed
 -------
-..
-- Removed dependency: aiopath
+
+- Timeout argument for socket connection
 ..
 Added
 -----
-..
-- Added dependency: aiopathlib
-..
-.. Changed
-.. -------
-..
-.. - A bullet item for the Changed category.
+
+- Added dependency: aiopath reverting previous change
+
+Changed
+-------
+
+- Updated dependencies.
 ..
 .. Deprecated
 .. ----------

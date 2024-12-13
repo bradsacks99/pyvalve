@@ -291,8 +291,7 @@ class PyvalveSocket(Pyvalve):
     Asyncio Clamd socket client
     """
     async def __init__(self, # type: ignore[misc]
-        socket: str = "/tmp/clamd.socket",
-        timeout: int = 60):
+        socket: str = "/tmp/clamd.socket"):
         """
             PyvalveSocket Constructor
 
@@ -301,7 +300,6 @@ class PyvalveSocket(Pyvalve):
         """
         await super().__init__()
         self.socket = socket
-        self.timeout = timeout
 
     async def get_connection(self) -> None:
         """
@@ -314,8 +312,7 @@ class PyvalveSocket(Pyvalve):
                 raise PyvalveConnectionError("Persitant connection no longer available")
         try:
             reader, writer = await asyncio.open_unix_connection(
-                path = self.socket,
-                ssl_handshake_timeout = self.timeout
+                path = self.socket
             )
             self.set_connection(Connection(reader, writer))
         except FileNotFoundError as exc:
