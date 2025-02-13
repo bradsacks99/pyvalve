@@ -3,7 +3,7 @@ name = "Pyvalve"
 version = "0.1.4"
 description = "Asyncio python clamav client"
 authors = ["Bradley Sacks <bradsacks99@gmail.com>"]
-license = {file = "LICENSE"} 
+license = "Apache Version 2.0"
 readme = "README.md"
 homepage = "https://github.com/bradsacks99/pyvalve"
 documentation = "https://github.com/bradsacks99/pyvalve/blob/master/README.md"
@@ -12,8 +12,7 @@ documentation = "https://github.com/bradsacks99/pyvalve/blob/master/README.md"
 python = ">=3.12,<4.0"
 asyncinit = "^0.2.4"
 aiofile = "^3.8.1"
-aiopathlib = "^0.5.0"
-aiopath = "^0.7.7"
+pre-commit = "^4.1.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.3.4"
