@@ -1,0 +1,21 @@
+Added
+-----
+
+- Added uv-native lockfile support via uv.lock.
+- Added integration test coverage with a new clamd-backed pytest module.
+- Added a GitHub Actions integration workflow that provisions clamd and runs integration tests.
+- Added Makefile targets for integration testing and consolidated quality checks.
+
+Changed
+-------
+
+- Migrated project packaging metadata from Poetry configuration to PEP 621 project metadata in pyproject.toml.
+- Updated local tooling to run through uv (Makefile and pre-commit hooks).
+- Updated mypy configuration to target Python 3.12.
+- Improved unit test coverage for connection success paths, stream size-limit handling, and async loop setup.
+
+Removed
+-------
+
+- Removed legacy setup.py in favor of pyproject.toml build metadata.
+- Removed the manual behavior test script and replaced it with automated pytest integration tests.

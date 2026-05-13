@@ -5,13 +5,14 @@ from io import BytesIO
 
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
-from src.pyvalve import Connection, Pyvalve, PyvalveSocket,  PyvalveNetwork, PyvalveResponseError, PyvalveConnectionError, PyvalveScanningError
+from src.pyvalve import Connection, Pyvalve, PyvalveSocket,  PyvalveNetwork, PyvalveResponseError, PyvalveConnectionError, PyvalveScanningError, PyvalveStreamMaxLength
 from unittest import mock
 
 
 @pytest.fixture(autouse=True)
 def event_loop():
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()
 
@@ -91,6 +92,27 @@ async def test_send_instream():
 
     assert result == 'DONE'
 
+
+@pytest.mark.asyncio
+async def test_send_instream_size_limit_exceeded():
+    reader = asyncio.StreamReader()
+    writer = mock.Mock(asyncio.StreamWriter)
+    conn = Connection(reader, writer)
+
+    pvs = await Pyvalve()
+    pvs.get_connection = mock.AsyncMock(return_value=conn)
+    pvs.set_connection(conn)
+
+    buffer = BytesIO()
+    buffer.write(os.urandom(2048))
+    buffer.seek(0)
+
+    conn.reader.feed_data(b'INSTREAM size limit exceeded. ERROR\n')
+    conn.reader.feed_eof()
+
+    with pytest.raises(PyvalveStreamMaxLength):
+        await pvs.instream(buffer)
+
 @pytest.mark.asyncio
 async def test_socket_get_connection():
 
@@ -120,6 +142,19 @@ async def test_socket_get_connection():
             await pvs.get_connection()
             assert exc.value.message == 'mocked error'
 
+
+@pytest.mark.asyncio
+async def test_socket_get_connection_success():
+    reader = asyncio.StreamReader()
+    writer = mock.Mock(asyncio.StreamWriter)
+
+    with mock.patch('src.pyvalve.asyncio.open_unix_connection', new=mock.AsyncMock(return_value=(reader, writer))):
+        pvs = await PyvalveSocket()
+        await pvs.get_connection()
+
+    assert pvs.conn.reader is reader
+    assert pvs.conn.writer is writer
+
 @pytest.mark.asyncio
 async def test_network_get_connection():
 
@@ -141,6 +176,19 @@ async def test_network_get_connection():
             pvs = await PyvalveNetwork()
             await pvs.get_connection()
             assert exc.value.message == 'mocked error'
+
+
+@pytest.mark.asyncio
+async def test_network_get_connection_success():
+    reader = asyncio.StreamReader()
+    writer = mock.Mock(asyncio.StreamWriter)
+
+    with mock.patch('src.pyvalve.asyncio.open_connection', new=mock.AsyncMock(return_value=(reader, writer))):
+        pvs = await PyvalveNetwork()
+        await pvs.get_connection()
+
+    assert pvs.conn.reader is reader
+    assert pvs.conn.writer is writer
 
 @pytest.mark.asyncio
 async def test_ping():
@@ -174,25 +222,6 @@ async def test_stats():
 
 
     conn.reader.feed_data(b'STATS\nI like big stats and I cannot lie\n')
-    conn.reader.feed_eof()
-
-    result = await pvs.stats()
-
-    assert 'big stats' in result
-
-@pytest.mark.asyncio
-async def test_stats():
-    # test stats command
-    reader = asyncio.StreamReader()
-    writer = mock.Mock(asyncio.StreamWriter)
-    conn = Connection(reader, writer)
-
-    pvs = await Pyvalve()
-    pvs.get_connection = mock.AsyncMock(return_value=conn)
-    pvs.set_connection(conn)
-
-
-    conn.reader.feed_data(b'STATS\nI like big stats and I can not lie\n')
     conn.reader.feed_eof()
 
     result = await pvs.stats()
