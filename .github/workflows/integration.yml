@@ -1,0 +1,61 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Start clamd container
+        run: |
+          docker run -d --name clamd -p 3310:3310 clamav/clamav:stable
+
+      - name: Wait for clamd
+        run: |
+          for i in $(seq 1 60); do
+            if bash -c '</dev/tcp/127.0.0.1/3310' 2>/dev/null; then
+              echo "clamd is reachable"
+              exit 0
+            fi
+            echo "waiting for clamd..."
+            sleep 5
+          done
+          echo "clamd did not become reachable in time"
+          docker logs clamd
+          exit 1
+
+      - name: Run integration tests
+        env:
+          PYVALVE_RUN_INTEGRATION: "1"
+          PYVALVE_CLAMD_HOST: "127.0.0.1"
+          PYVALVE_CLAMD_PORT: "3310"
+        run: |
+          make integration
+
+      - name: Print clamd logs on failure
+        if: failure()
+        run: docker logs clamd
+
+      - name: Stop clamd
+        if: always()
+        run: docker rm -f clamd

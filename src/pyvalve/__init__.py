@@ -2,13 +2,10 @@
 """ Pyvalve clamd client library """
 import asyncio
 import struct
-import codecs
-from io import BytesIO, BufferedReader
-from typing import List, BinaryIO
+from typing import BinaryIO
 from asyncinit import asyncinit
-from aiopath import AsyncPath
 
-__version__ = "0.1.3"
+__version__ = "0.1.5"
 DEBUG = 0
 
 def print_(msg: str) -> None:
@@ -132,10 +129,7 @@ class Pyvalve():
         :param path str: Path to file/directory to be scanned
         :return: Response from clamav
         :rtype: str
-        :raises PyvalveScanningError: If path is not found
         """
-        if not await self.check_path(path):
-            raise PyvalveScanningError(f'Path not found: {path}')
         return await self.send_command('SCAN', path)
 
     async def contscan(self, path: str) -> str:
@@ -145,10 +139,7 @@ class Pyvalve():
         :param path str: Path to file/directory to be scanned
         :return: Response from clamav
         :rtype: str
-        :raises PyvalveScanningError: If path is not found
         """
-        if not await self.check_path(path):
-            raise PyvalveScanningError(f'Path not found: {path}')
         return await self.send_command('CONTSCAN', path)
 
     async def multiscan(self, path: str) -> str:
@@ -158,10 +149,7 @@ class Pyvalve():
         :param path str: Path to file/directory to be scanned
         :return: Response from clamav
         :rtype: str
-        :raises PyvalveScanningError: If path is not found
         """
-        if not await self.check_path(path):
-            raise PyvalveScanningError(f'Path not found: {path}')
         return await self.send_command('MULTISCAN', path)
 
     async def allmatchscan(self, path: str) -> str:
@@ -171,10 +159,7 @@ class Pyvalve():
         :param path str: Path to file/directory to be scanned
         :return: Response from clamav
         :rtype: str
-        :raises PyvalveScanningError: If path is not found
         """
-        if not await self.check_path(path):
-            raise PyvalveScanningError(f'Path not found: {path}')
         return await self.send_command('ALLMATCHSCAN', path)
 
     async def send_command(self,
@@ -270,17 +255,6 @@ class Pyvalve():
         print_('Close the connection')
         self.conn.writer.close()
         await self.conn.writer.wait_closed()
-
-    async def check_path(self, path: str) -> bool:
-        """
-        Check scanning path
-
-        :param path str: Path to file/directory to be scanned
-        """
-        print_(f'Checking path {path}')
-        chk_path = AsyncPath(path)
-
-        return await chk_path.exists()
 
     async def get_connection(self):
         """ Place holder get_connection method """

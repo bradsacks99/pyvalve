@@ -5,19 +5,19 @@ repos:
     hooks:
       - id: pylint
         name: pylint
-        entry: pytest --pylint src/
+        entry: uv run --extra dev pytest --pylint src/pyvalve
         language: system
         pass_filenames: false
         always_run: true
       - id: mypy
         name: mypy
-        entry: pytest --mypy src/
+        entry: uv run --extra dev pytest --mypy src/pyvalve
         language: system
         pass_filenames: false
         always_run: true
       - id: pytest
         name: pytest
-        entry: pytest test/
+        entry: uv run --extra dev pytest test/
         language: system
         pass_filenames: false
         always_run: true

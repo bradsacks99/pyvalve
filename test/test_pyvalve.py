@@ -5,13 +5,14 @@ from io import BytesIO
 
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
-from src.pyvalve import Connection, Pyvalve, PyvalveSocket,  PyvalveNetwork, PyvalveResponseError, PyvalveConnectionError, PyvalveScanningError
+from src.pyvalve import Connection, Pyvalve, PyvalveSocket,  PyvalveNetwork, PyvalveResponseError, PyvalveConnectionError, PyvalveScanningError, PyvalveStreamMaxLength
 from unittest import mock
 
 
 @pytest.fixture(autouse=True)
 def event_loop():
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()
 
@@ -68,22 +69,6 @@ async def test_send_command():
 
     writer.write.assert_called_with('nSCAN /tmp/nofile\n'.encode('utf-8'))
 
-@pytest.mark.asyncio
-
-async def test_check_path():
-
-    pvs = await Pyvalve()
-    result = await pvs.check_path('abc/123')
-    assert result is False
-
-    with mock.patch('src.pyvalve.AsyncPath.exists') as mock_exists:
-
-        future = asyncio.Future()
-        future.set_result(True)
-        mock_exists = mock.AsyncMock(return_value=future)
-
-        pvs = await Pyvalve()
-        await pvs.check_path('abc/123')
 
 @pytest.mark.asyncio
 async def test_send_instream():
@@ -106,6 +91,27 @@ async def test_send_instream():
     result = await pvs.instream(buffer)
 
     assert result == 'DONE'
+
+
+@pytest.mark.asyncio
+async def test_send_instream_size_limit_exceeded():
+    reader = asyncio.StreamReader()
+    writer = mock.Mock(asyncio.StreamWriter)
+    conn = Connection(reader, writer)
+
+    pvs = await Pyvalve()
+    pvs.get_connection = mock.AsyncMock(return_value=conn)
+    pvs.set_connection(conn)
+
+    buffer = BytesIO()
+    buffer.write(os.urandom(2048))
+    buffer.seek(0)
+
+    conn.reader.feed_data(b'INSTREAM size limit exceeded. ERROR\n')
+    conn.reader.feed_eof()
+
+    with pytest.raises(PyvalveStreamMaxLength):
+        await pvs.instream(buffer)
 
 @pytest.mark.asyncio
 async def test_socket_get_connection():
@@ -136,6 +142,19 @@ async def test_socket_get_connection():
             await pvs.get_connection()
             assert exc.value.message == 'mocked error'
 
+
+@pytest.mark.asyncio
+async def test_socket_get_connection_success():
+    reader = asyncio.StreamReader()
+    writer = mock.Mock(asyncio.StreamWriter)
+
+    with mock.patch('src.pyvalve.asyncio.open_unix_connection', new=mock.AsyncMock(return_value=(reader, writer))):
+        pvs = await PyvalveSocket()
+        await pvs.get_connection()
+
+    assert pvs.conn.reader is reader
+    assert pvs.conn.writer is writer
+
 @pytest.mark.asyncio
 async def test_network_get_connection():
 
@@ -157,6 +176,19 @@ async def test_network_get_connection():
             pvs = await PyvalveNetwork()
             await pvs.get_connection()
             assert exc.value.message == 'mocked error'
+
+
+@pytest.mark.asyncio
+async def test_network_get_connection_success():
+    reader = asyncio.StreamReader()
+    writer = mock.Mock(asyncio.StreamWriter)
+
+    with mock.patch('src.pyvalve.asyncio.open_connection', new=mock.AsyncMock(return_value=(reader, writer))):
+        pvs = await PyvalveNetwork()
+        await pvs.get_connection()
+
+    assert pvs.conn.reader is reader
+    assert pvs.conn.writer is writer
 
 @pytest.mark.asyncio
 async def test_ping():
@@ -190,25 +222,6 @@ async def test_stats():
 
 
     conn.reader.feed_data(b'STATS\nI like big stats and I cannot lie\n')
-    conn.reader.feed_eof()
-
-    result = await pvs.stats()
-
-    assert 'big stats' in result
-
-@pytest.mark.asyncio
-async def test_stats():
-    # test stats command
-    reader = asyncio.StreamReader()
-    writer = mock.Mock(asyncio.StreamWriter)
-    conn = Connection(reader, writer)
-
-    pvs = await Pyvalve()
-    pvs.get_connection = mock.AsyncMock(return_value=conn)
-    pvs.set_connection(conn)
-
-
-    conn.reader.feed_data(b'STATS\nI like big stats and I can not lie\n')
     conn.reader.feed_eof()
 
     result = await pvs.stats()
@@ -276,157 +289,90 @@ async def test_shutdown():
 async def test_scan():
     # test scan command
 
-    with mock.patch('src.pyvalve.AsyncPath.exists') as mock_exists:
-        reader = asyncio.StreamReader()
-        writer = mock.Mock(asyncio.StreamWriter)
-        conn = Connection(reader, writer)
-        future = asyncio.Future()
-        future.set_result(True)
-        mock_exists = mock.AsyncMock(return_value=future)
+    reader = asyncio.StreamReader()
+    writer = mock.Mock(asyncio.StreamWriter)
+    conn = Connection(reader, writer)
+    future = asyncio.Future()
+    future.set_result(True)
 
-        pvs = await Pyvalve()
-        pvs.get_connection = mock.AsyncMock(return_value=conn)
-        pvs.set_connection(conn)
+    pvs = await Pyvalve()
+    pvs.get_connection = mock.AsyncMock(return_value=conn)
+    pvs.set_connection(conn)
 
 
-        conn.reader.feed_data(b'Received: /tmp/eicar.com.txt: Win.Test.EICAR_HDB-1 FOUND\n')
-        conn.reader.feed_eof()
+    conn.reader.feed_data(b'Received: /tmp/eicar.com.txt: Win.Test.EICAR_HDB-1 FOUND\n')
+    conn.reader.feed_eof()
 
-        result = await pvs.scan('/tmp/eicar.com.txt')
+    result = await pvs.scan('/tmp/eicar.com.txt')
 
-        assert 'Win.Test.EICAR_HDB-1 FOUND' in result
-
-    with pytest.raises(PyvalveScanningError) as exc:
-
-        reader = asyncio.StreamReader()
-        writer = mock.Mock(asyncio.StreamWriter)
-        conn = Connection(reader, writer)
-
-        pvs = await Pyvalve()
-        pvs.get_connection = mock.AsyncMock(return_value=conn)
-        pvs.check_path = mock.AsyncMock(return_value=False)
-        pvs.set_connection(conn)
-
-        result = await pvs.scan('/tmp/eicar.com.txt')
-
-        assert '/tmp/eicar.com.txt' in exc.value.message
+    assert 'Win.Test.EICAR_HDB-1 FOUND' in result
 
 @pytest.mark.asyncio
 async def test_contscan():
     # test test_contscan command
 
-    with mock.patch('src.pyvalve.AsyncPath.exists') as mock_exists:
-        reader = asyncio.StreamReader()
-        writer = mock.Mock(asyncio.StreamWriter)
-        conn = Connection(reader, writer)
-        future = asyncio.Future()
-        future.set_result(True)
-        mock_exists = mock.AsyncMock(return_value=future)
+    reader = asyncio.StreamReader()
+    writer = mock.Mock(asyncio.StreamWriter)
+    conn = Connection(reader, writer)
+    future = asyncio.Future()
+    future.set_result(True)
 
-        pvs = await Pyvalve()
-        pvs.get_connection = mock.AsyncMock(return_value=conn)
-        pvs.set_connection(conn)
+    pvs = await Pyvalve()
+    pvs.get_connection = mock.AsyncMock(return_value=conn)
+    pvs.set_connection(conn)
 
 
-        conn.reader.feed_data(b'Received: /tmp/eicar.com.txt: Win.Test.EICAR_HDB-1 FOUND\n')
-        conn.reader.feed_eof()
+    conn.reader.feed_data(b'Received: /tmp/eicar.com.txt: Win.Test.EICAR_HDB-1 FOUND\n')
+    conn.reader.feed_eof()
 
-        result = await pvs.contscan('/tmp/eicar.com.txt')
+    result = await pvs.contscan('/tmp/eicar.com.txt')
 
-        assert 'Win.Test.EICAR_HDB-1 FOUND' in result
-
-    with pytest.raises(PyvalveScanningError) as exc:
-
-        reader = asyncio.StreamReader()
-        writer = mock.Mock(asyncio.StreamWriter)
-        conn = Connection(reader, writer)
-
-        pvs = await Pyvalve()
-        pvs.get_connection = mock.AsyncMock(return_value=conn)
-        pvs.check_path = mock.AsyncMock(return_value=False)
-        pvs.set_connection(conn)
-
-        result = await pvs.contscan('/tmp/eicar.com.txt')
-
-        assert '/tmp/eicar.com.txt' in exc.value.message
+    assert 'Win.Test.EICAR_HDB-1 FOUND' in result
 
 @pytest.mark.asyncio
 async def test_multiscan():
     # test test_multiscan command
 
-    with mock.patch('src.pyvalve.AsyncPath.exists') as mock_exists:
-        reader = asyncio.StreamReader()
-        writer = mock.Mock(asyncio.StreamWriter)
-        conn = Connection(reader, writer)
-        future = asyncio.Future()
-        future.set_result(True)
-        mock_exists = mock.AsyncMock(return_value=future)
+    reader = asyncio.StreamReader()
+    writer = mock.Mock(asyncio.StreamWriter)
+    conn = Connection(reader, writer)
+    future = asyncio.Future()
+    future.set_result(True)
 
-        pvs = await Pyvalve()
-        pvs.get_connection = mock.AsyncMock(return_value=conn)
-        pvs.set_connection(conn)
+    pvs = await Pyvalve()
+    pvs.get_connection = mock.AsyncMock(return_value=conn)
+    pvs.set_connection(conn)
 
 
-        conn.reader.feed_data(b'Received: /tmp/eicar.com.txt: Win.Test.EICAR_HDB-1 FOUND\n')
-        conn.reader.feed_eof()
+    conn.reader.feed_data(b'Received: /tmp/eicar.com.txt: Win.Test.EICAR_HDB-1 FOUND\n')
+    conn.reader.feed_eof()
 
-        result = await pvs.multiscan('/tmp/eicar.com.txt')
+    result = await pvs.multiscan('/tmp/eicar.com.txt')
 
-        assert 'Win.Test.EICAR_HDB-1 FOUND' in result
-
-    with pytest.raises(PyvalveScanningError) as exc:
-
-        reader = asyncio.StreamReader()
-        writer = mock.Mock(asyncio.StreamWriter)
-        conn = Connection(reader, writer)
-
-        pvs = await Pyvalve()
-        pvs.get_connection = mock.AsyncMock(return_value=conn)
-        pvs.check_path = mock.AsyncMock(return_value=False)
-        pvs.set_connection(conn)
-
-        result = await pvs.multiscan('/tmp/eicar.com.txt')
-
-        assert '/tmp/eicar.com.txt' in exc.value.message
+    assert 'Win.Test.EICAR_HDB-1 FOUND' in result
 
 @pytest.mark.asyncio
 async def test_allmatchscan():
     # test test_allmatchscan command
 
-    with mock.patch('src.pyvalve.AsyncPath.exists') as mock_exists:
-        reader = asyncio.StreamReader()
-        writer = mock.Mock(asyncio.StreamWriter)
-        conn = Connection(reader, writer)
-        future = asyncio.Future()
-        future.set_result(True)
-        mock_exists = mock.AsyncMock(return_value=future)
+    reader = asyncio.StreamReader()
+    writer = mock.Mock(asyncio.StreamWriter)
+    conn = Connection(reader, writer)
+    future = asyncio.Future()
+    future.set_result(True)
 
-        pvs = await Pyvalve()
-        pvs.get_connection = mock.AsyncMock(return_value=conn)
-        pvs.set_connection(conn)
+    pvs = await Pyvalve()
+    pvs.get_connection = mock.AsyncMock(return_value=conn)
+    pvs.set_connection(conn)
 
 
-        conn.reader.feed_data(b'Received: /tmp/eicar.com.txt: Win.Test.EICAR_HDB-1 FOUND\n')
-        conn.reader.feed_eof()
+    conn.reader.feed_data(b'Received: /tmp/eicar.com.txt: Win.Test.EICAR_HDB-1 FOUND\n')
+    conn.reader.feed_eof()
 
-        result = await pvs.allmatchscan('/tmp/eicar.com.txt')
+    result = await pvs.allmatchscan('/tmp/eicar.com.txt')
 
-        assert 'Win.Test.EICAR_HDB-1 FOUND' in result
+    assert 'Win.Test.EICAR_HDB-1 FOUND' in result
 
-    with pytest.raises(PyvalveScanningError) as exc:
-
-        reader = asyncio.StreamReader()
-        writer = mock.Mock(asyncio.StreamWriter)
-        conn = Connection(reader, writer)
-
-        pvs = await Pyvalve()
-        pvs.get_connection = mock.AsyncMock(return_value=conn)
-        pvs.check_path = mock.AsyncMock(return_value=False)
-        pvs.set_connection(conn)
-
-        result = await pvs.allmatchscan('/tmp/eicar.com.txt')
-
-        assert '/tmp/eicar.com.txt' in exc.value.message
 
 @pytest.mark.asyncio
 async def test_close():

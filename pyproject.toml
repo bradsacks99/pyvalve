@@ -1,38 +1,44 @@
-[tool.poetry]
+
+[project]
 name = "Pyvalve"
-version = "0.1.4"
+version = "0.1.5"
 description = "Asyncio python clamav client"
-authors = ["Bradley Sacks <bradsacks99@gmail.com>"]
-license = {file = "LICENSE"} 
+authors = [{name = "Bradley Sacks", email = "bradsacks99@gmail.com"}]
+license = "Apache-2.0"
 readme = "README.md"
-homepage = "https://github.com/bradsacks99/pyvalve"
-documentation = "https://github.com/bradsacks99/pyvalve/blob/master/README.md"
+requires-python = ">=3.12,<4.0"
+dependencies = [
+	"asyncinit>=0.2.4",
+	"aiofile>=3.8.1",
+	"pre-commit>=4.1.0"
+]
 
-[tool.poetry.dependencies]
-python = ">=3.12,<4.0"
-asyncinit = "^0.2.4"
-aiofile = "^3.8.1"
-aiopathlib = "^0.5.0"
-aiopath = "^0.7.7"
-
-[tool.poetry.dev-dependencies]
-pytest = "^8.3.4"
-pytest-pylint = "^0.21.0"
-pytest-mypy = "^0.10.3"
-pytest-asyncio = "^0.25.0"
-pre-commit = "^4.0.1"
-pytest-cov = "^6.0.0"
-scriv = {extras = ["toml"], version = "^0.16.0"}
-sphinx-autodoc-typehints = "^1.19.2"
-sphinx-markdown-builder = "^0.5.5"
-Sphinx = "^5.1.1"
+[project.optional-dependencies]
+dev = [
+	"pytest>=8.3.4",
+	"pytest-pylint>=0.21.0",
+	"pytest-mypy>=0.10.3",
+	"pytest-asyncio>=0.25.0",
+	"pytest-cov>=6.0.0",
+	"scriv[toml]>=0.16.0",
+	"sphinx-autodoc-typehints>=1.19.2",
+	"sphinx-markdown-builder>=0.5.5",
+	"Sphinx>=5.1.1"
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
-[package]
-include = ["src/*.py"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+markers = [
+	"integration: tests that require a running clamd service"
+]
+
 
 [scriv]
 version = "literal: src/pyvalve/__init__.py: __version__"

@@ -1,0 +1,6 @@
+Fixed
+-----
+
+- Updated the 0.1.5 package contents to resolve downstream compatibility issues.
+- Confirmed runtime code no longer relies on aiopathlib.AsyncPath and ships without aiopathlib dependency.
+- Synchronized package metadata and runtime version constant to 0.1.5.
