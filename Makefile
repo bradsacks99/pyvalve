@@ -1,6 +1,6 @@
 # Makefile for pyvalve project with uv
 
-.PHONY: help install dev test lint type format clean lock check integration
+.PHONY: help install dev test lint type format clean lock check integration build
 
 help:
 	@echo "Common make targets:"
@@ -12,6 +12,7 @@ help:
 	@echo "  integration - Run clamd integration tests"
 	@echo "  check     - Lint, type check, and test"
 	@echo "  format    - Run formatters (via pre-commit)"
+	@echo "  build     - Build wheel and sdist artifacts"
 	@echo "  lock      - Update uv.lock"
 	@echo "  clean     - Remove caches and local venv"
 
@@ -37,6 +38,9 @@ type:
 
 format:
 	uv run --extra dev pre-commit run --all-files
+
+build:
+	uv build
 
 lock:
 	uv lock

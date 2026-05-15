@@ -5,7 +5,7 @@ import struct
 from typing import BinaryIO
 from asyncinit import asyncinit
 
-__version__ = "0.1.3"
+__version__ = "0.1.5"
 DEBUG = 0
 
 def print_(msg: str) -> None:
